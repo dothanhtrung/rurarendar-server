@@ -1,0 +1,13 @@
+# Database for development
+
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./data:/var/lib/postgresql:Z
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: rurarendar

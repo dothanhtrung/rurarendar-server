@@ -1,0 +1,8 @@
+(
+    db: (
+        postgres: (
+            db_path: "postgres://dev:dev@127.0.0.1:5432/rurarendar",
+        ),
+    ),
+    bind: "127.0.0.1:8080",
+)

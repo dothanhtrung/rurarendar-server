@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Sign in — Lịch Vạn Niên{% endblock %}
+{% block body %}
+<div class="grid min-h-screen place-items-center p-6">
+    <div class="w-full max-w-sm rounded-xl border border-line bg-panel p-5">
+        <h1 class="text-xl font-semibold tracking-tight">Lịch Vạn Niên</h1>
+        <p class="mt-1 mb-4 text-sm text-muted">Sign in with your login password, then generate the calendar app token on the next page. The encryption passphrase stays in the app and is never sent here.</p>
+        <div id="flash" class="mb-4 hidden rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert"></div>
+        <form id="login-form" class="space-y-3">
+            <div>
+                <label for="username" class="mb-1 block text-sm font-semibold">Username</label>
+                <input id="username" name="username" type="text" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9._-]{3,32}"
+                       class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+            </div>
+            <div>
+                <label for="password" class="mb-1 block text-sm font-semibold">Login password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"
+                       class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+            </div>
+            <button type="submit" class="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-paper hover:bg-stone-800">Sign in</button>
+        </form>
+        <p class="mt-4 text-xs text-muted">v{{ version }}</p>
+    </div>
+</div>
+<script>
+(function () {
+    const KEY = "rurarendar.session";
+    function loadSession() {
+        try { return JSON.parse(sessionStorage.getItem(KEY) || "null"); }
+        catch (e) { return null; }
+    }
+    if (loadSession() && loadSession().token) {
+        location.replace("/account");
+        return;
+    }
+    const flash = document.getElementById("flash");
+    function showErr(msg) {
+        flash.textContent = msg;
+        flash.classList.remove("hidden");
+    }
+    document.getElementById("login-form").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        flash.classList.add("hidden");
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        try {
+            const res = await fetch("/v1/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify({ username, password, device_label: "web" }),
+            });
+            const data = await res.json().catch(() => ({ err: "Bad response." }));
+            if (!res.ok || data.err) {
+                showErr(data.err || "Sign in failed.");
+                return;
+            }
+            if (!data.token) {
+                showErr("Sign in failed.");
+                return;
+            }
+            sessionStorage.setItem(KEY, JSON.stringify({
+                username: data.username,
+                token: data.token,
+                token_id: data.token_id,
+                expires_at: data.expires_at,
+                role: data.role,
+            }));
+            location.replace("/account");
+        } catch (e) {
+            showErr("Could not reach the server.");
+        }
+    });
+})();
+</script>
+{% endblock %}

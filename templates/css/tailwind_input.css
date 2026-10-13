@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@source "../*.html";
+
+@theme {
+  --color-paper: #f3eee4;
+  --color-panel: #fffaf3;
+  --color-ink: #1f1a16;
+  --color-muted: #6b6158;
+  --color-line: #d9d0c4;
+  --color-vermilion: #9a2b2b;
+  --color-vermilion-dark: #7a1f1f;
+  --font-sans: ui-sans-serif, system-ui, "Noto Sans", "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+}

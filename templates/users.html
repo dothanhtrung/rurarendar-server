@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+{% block title %}Users — Lịch Vạn Niên Admin{% endblock %}
+{% block body %}
+<header class="flex flex-col items-start justify-between gap-3 bg-ink px-6 py-3.5 text-paper sm:flex-row sm:items-center">
+    <div class="font-semibold tracking-wide">Lịch Vạn Niên <span class="ml-2 font-medium text-orange-200">Admin</span></div>
+    <div class="flex flex-wrap items-center gap-2 text-sm text-stone-300">
+        <span>Signed in as <strong id="who" class="font-semibold text-paper"></strong></span>
+        <a href="/account" class="rounded-md bg-paper px-2.5 py-1 text-xs font-semibold text-ink hover:bg-stone-100">Account</a>
+        <button id="logout" class="rounded-md bg-paper px-2.5 py-1 text-xs font-semibold text-ink hover:bg-stone-100" type="button">Sign out</button>
+    </div>
+</header>
+<main class="mx-auto max-w-6xl px-6 py-5">
+    <h1 class="text-xl font-semibold">Users</h1>
+    <p class="mt-1 mb-4 text-sm text-muted">Add, disable, delete, and reset passwords. Temporary passwords are shown once and are not stored in plaintext.</p>
+    <div id="flash" class="mb-4 hidden rounded-lg border px-3 py-2 text-sm" role="status"></div>
+    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <section class="rounded-xl border border-line bg-panel p-4">
+            <h2 class="mb-3 text-base font-semibold">Add user</h2>
+            <form id="add-form" class="space-y-3">
+                <div>
+                    <label for="new-username" class="mb-1 block text-sm font-semibold">Username</label>
+                    <input id="new-username" name="username" type="text" required minlength="3" maxlength="32" pattern="[A-Za-z0-9._-]{3,32}" placeholder="an"
+                           class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+                </div>
+                <div>
+                    <label for="new-display" class="mb-1 block text-sm font-semibold">Display name</label>
+                    <input id="new-display" name="display_name" type="text" maxlength="80" placeholder="optional"
+                           class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+                </div>
+                <div>
+                    <label for="new-role" class="mb-1 block text-sm font-semibold">Role</label>
+                    <select id="new-role" name="role"
+                            class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+                        <option value="user" selected>user</option>
+                        <option value="admin">admin</option>
+                    </select>
+                </div>
+                <label class="flex items-center gap-2 text-sm">
+                    <input id="new-enabled" type="checkbox" checked class="size-4 rounded border-line text-ink">
+                    Enabled
+                </label>
+                <button type="submit" class="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-paper hover:bg-stone-800">Add user</button>
+                <p class="text-sm text-muted">A temporary password is generated and shown once.</p>
+            </form>
+        </section>
+        <section class="rounded-xl border border-line bg-panel p-4">
+            <div class="mb-3 flex items-center gap-2">
+                <input id="q" type="search" placeholder="Search username"
+                       class="min-w-0 flex-1 rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+                <button id="reload" class="rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-100" type="button">Reload</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr>
+                            <th class="border-b border-line px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">Username</th>
+                            <th class="border-b border-line px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">Display name</th>
+                            <th class="border-b border-line px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">Role</th>
+                            <th class="border-b border-line px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">Status</th>
+                            <th class="border-b border-line px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">Last login</th>
+                            <th class="border-b border-line px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">Tokens</th>
+                            <th class="border-b border-line px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+            </div>
+            <p id="empty" class="py-4 text-muted hidden">No users.</p>
+            <div class="mt-3">
+                <button id="more" class="hidden rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink hover:bg-stone-100" type="button">Load more</button>
+            </div>
+        </section>
+    </div>
+    <p class="mt-4 text-xs text-muted">v{{ version }} · events and ciphertext are never shown here</p>
+</main>
+
+<dialog id="pw-dialog" class="w-[min(28rem,calc(100%-2rem))] rounded-xl border border-line bg-panel p-5 text-ink shadow-lg backdrop:bg-ink/45">
+    <h2 id="pw-title" class="text-base font-semibold">Temporary password</h2>
+    <p class="mt-1 text-sm text-muted" id="pw-hint">Copy it now. It will not be shown again.</p>
+    <div class="my-3 rounded-lg border border-dashed border-vermilion bg-white px-3 py-2 font-mono text-lg tracking-wide break-all" id="pw-value"></div>
+    <div class="flex flex-wrap gap-2">
+        <button id="pw-copy" class="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-paper hover:bg-stone-800" type="button">Copy</button>
+        <button id="pw-close" class="rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-100" type="button">Done</button>
+    </div>
+</dialog>
+
+<dialog id="confirm-dialog" class="w-[min(28rem,calc(100%-2rem))] rounded-xl border border-line bg-panel p-5 text-ink shadow-lg backdrop:bg-ink/45">
+    <h2 id="confirm-title" class="text-base font-semibold">Confirm</h2>
+    <p id="confirm-body" class="mt-1 text-sm text-muted"></p>
+    <div class="mt-4 flex flex-wrap gap-2">
+        <button id="confirm-ok" class="rounded-md bg-vermilion px-3 py-2 text-sm font-semibold text-white hover:bg-vermilion-dark" type="button">Confirm</button>
+        <button id="confirm-cancel" class="rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-stone-100" type="button">Cancel</button>
+    </div>
+</dialog>
+
+<script>
+(function () {
+    const KEY = "rurarendar.session";
+    const CLS = {
+        flashErr: "mb-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900",
+        flashOk: "mb-4 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900",
+        td: "border-b border-line px-2 py-2 align-middle text-sm",
+        badgeAdmin: "inline-block rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800",
+        badgeOk: "inline-block rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800",
+        badgeOff: "inline-block rounded-full border border-line bg-stone-100 px-2 py-0.5 text-xs font-semibold text-muted",
+        badgeRole: "inline-block rounded-full border border-line bg-white px-2 py-0.5 text-xs font-semibold text-ink",
+        btnSecondary: "rounded-md border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-stone-100",
+        btnDanger: "rounded-md bg-vermilion px-2 py-1 text-xs font-semibold text-white hover:bg-vermilion-dark",
+    };
+    const flashEl = document.getElementById("flash");
+    const rowsEl = document.getElementById("rows");
+    const emptyEl = document.getElementById("empty");
+    const moreEl = document.getElementById("more");
+    const pwDialog = document.getElementById("pw-dialog");
+    const confirmDialog = document.getElementById("confirm-dialog");
+    let nextCursor = null;
+    let hasMore = false;
+
+    function loadSession() {
+        try { return JSON.parse(sessionStorage.getItem(KEY) || "null"); }
+        catch (e) { return null; }
+    }
+    function clearSession() { sessionStorage.removeItem(KEY); }
+
+    const session = loadSession();
+    if (!session || !session.token || !session.username) {
+        location.replace("/login");
+        return;
+    }
+    if (session.role !== "admin") {
+        location.replace("/account");
+        return;
+    }
+    document.getElementById("who").textContent = session.username;
+
+    function flash(kind, msg) {
+        flashEl.textContent = msg;
+        flashEl.className = kind === "ok" ? CLS.flashOk : CLS.flashErr;
+        flashEl.classList.remove("hidden");
+    }
+    function clearFlash() {
+        flashEl.classList.add("hidden");
+        flashEl.textContent = "";
+    }
+
+    async function api(method, path, body) {
+        const headers = {
+            "Authorization": "Bearer " + session.token,
+            "X-Username": session.username,
+            "Accept": "application/json",
+        };
+        const opts = { method, headers };
+        if (body !== undefined) {
+            headers["Content-Type"] = "application/json";
+            opts.body = JSON.stringify(body);
+        }
+        const res = await fetch(path, opts);
+        const data = await res.json().catch(() => ({ err: "Bad response." }));
+        if (res.status === 401) {
+            clearSession();
+            location.replace("/login");
+            throw new Error("Unauthorized.");
+        }
+        return { ok: res.ok, status: res.status, data };
+    }
+
+    function fmtTime(s) {
+        if (!s) return "—";
+        const d = new Date(s);
+        if (Number.isNaN(d.getTime())) return s;
+        return d.toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
+    }
+
+    function badge(text, cls) {
+        const s = document.createElement("span");
+        s.className = cls;
+        s.textContent = text;
+        return s;
+    }
+
+    function btn(label, cls, fn) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = cls;
+        b.textContent = label;
+        b.addEventListener("click", fn);
+        return b;
+    }
+
+    function td(text, extra) {
+        const el = document.createElement("td");
+        el.className = extra ? CLS.td + " " + extra : CLS.td;
+        el.textContent = text;
+        return el;
+    }
+
+    function ask(title, body) {
+        return new Promise((resolve) => {
+            document.getElementById("confirm-title").textContent = title;
+            document.getElementById("confirm-body").textContent = body;
+            const ok = document.getElementById("confirm-ok");
+            const cancel = document.getElementById("confirm-cancel");
+            let settled = false;
+            function done(v) {
+                if (settled) return;
+                settled = true;
+                ok.removeEventListener("click", onOk);
+                cancel.removeEventListener("click", onCancel);
+                confirmDialog.close();
+                resolve(v);
+            }
+            function onOk() { done(true); }
+            function onCancel() { done(false); }
+            ok.addEventListener("click", onOk);
+            cancel.addEventListener("click", onCancel);
+            confirmDialog.addEventListener("close", onCancel, { once: true });
+            confirmDialog.showModal();
+        });
+    }
+
+    function showPassword(title, hint, password) {
+        document.getElementById("pw-title").textContent = title;
+        document.getElementById("pw-hint").textContent = hint;
+        document.getElementById("pw-value").textContent = password;
+        pwDialog.showModal();
+    }
+
+    document.getElementById("pw-close").addEventListener("click", () => pwDialog.close());
+    document.getElementById("pw-copy").addEventListener("click", async () => {
+        const text = document.getElementById("pw-value").textContent;
+        try {
+            await navigator.clipboard.writeText(text);
+            flash("ok", "Temporary password copied.");
+        } catch (e) {
+            flash("err", "Copy failed. Select the password and copy it manually.");
+        }
+    });
+
+    function renderUsers(users, append) {
+        if (!append) rowsEl.replaceChildren();
+        for (const u of users) {
+            const tr = document.createElement("tr");
+            const tdUser = td(u.username, "font-mono");
+            const tdName = td(u.display_name || "—");
+            const tdRole = document.createElement("td");
+            tdRole.className = CLS.td;
+            tdRole.append(badge(u.role, u.role === "admin" ? CLS.badgeAdmin : CLS.badgeRole));
+            const tdEn = document.createElement("td");
+            tdEn.className = CLS.td;
+            tdEn.append(badge(u.enabled ? "enabled" : "disabled", u.enabled ? CLS.badgeOk : CLS.badgeOff));
+            const tdLogin = td(fmtTime(u.last_login_at));
+            const tdTok = td(String(u.token_count ?? 0));
+            const tdAct = document.createElement("td");
+            tdAct.className = CLS.td;
+            const acts = document.createElement("div");
+            acts.className = "flex flex-wrap gap-1";
+            acts.append(
+                btn(u.enabled ? "Disable" : "Enable", CLS.btnSecondary, () => toggleEnabled(u)),
+                btn("Reset password", CLS.btnSecondary, () => resetPassword(u)),
+                btn("Revoke tokens", CLS.btnSecondary, () => revokeTokens(u)),
+                btn("Delete", CLS.btnDanger, () => deleteUser(u)),
+            );
+            tdAct.append(acts);
+            tr.append(tdUser, tdName, tdRole, tdEn, tdLogin, tdTok, tdAct);
+            rowsEl.append(tr);
+        }
+        emptyEl.classList.toggle("hidden", rowsEl.children.length > 0);
+        moreEl.classList.toggle("hidden", !hasMore);
+    }
+
+    async function loadUsers(append) {
+        const q = document.getElementById("q").value.trim();
+        const params = new URLSearchParams();
+        params.set("limit", "50");
+        if (q) params.set("q", q);
+        if (append && nextCursor) params.set("cursor", nextCursor);
+        const { ok, data } = await api("GET", "/v1/admin/users?" + params.toString());
+        if (!ok || data.err) {
+            flash("err", data.err || "Could not list users.");
+            return;
+        }
+        hasMore = !!data.has_more;
+        nextCursor = data.next_cursor || null;
+        renderUsers(data.users || [], append);
+    }
+
+    async function toggleEnabled(u) {
+        const next = !u.enabled;
+        const verb = next ? "Enable" : "Disable";
+        const yes = await ask(verb + " " + u.username + "?", next
+            ? "They will be able to sign in again."
+            : "Their app token and signed-in browsers stop working on the next request.");
+        if (!yes) return;
+        const { ok, data } = await api("PATCH", "/v1/admin/users/" + encodeURIComponent(u.username), { enabled: next });
+        if (!ok || data.err) {
+            flash("err", data.err || "Update failed.");
+            return;
+        }
+        flash("ok", u.username + " is now " + (next ? "enabled" : "disabled") + ".");
+        await loadUsers(false);
+    }
+
+    async function resetPassword(u) {
+        const yes = await ask("Reset password for " + u.username + "?",
+            "Their app token is removed and signed-in browsers must sign in again. The new temporary password is shown once and cannot be retrieved later.");
+        if (!yes) return;
+        const { ok, data } = await api("POST", "/v1/admin/users/" + encodeURIComponent(u.username) + "/password/reset", {});
+        if (!ok || data.err) {
+            flash("err", data.err || "Reset failed.");
+            return;
+        }
+        showPassword(
+            "Password reset — " + u.username,
+            "Copy this temporary password now. It will not be shown again.",
+            data.temporary_password
+        );
+        await loadUsers(false);
+    }
+
+    async function revokeTokens(u) {
+        const yes = await ask("Revoke tokens for " + u.username + "?",
+            "Their app token is deleted and signed-in browsers must sign in again.");
+        if (!yes) return;
+        const { ok, data } = await api("POST", "/v1/admin/users/" + encodeURIComponent(u.username) + "/tokens/revoke", {});
+        if (!ok || data.err) {
+            flash("err", data.err || "Revoke failed.");
+            return;
+        }
+        flash("ok", "Revoked " + (data.tokens_revoked ?? 0) + " token(s) for " + u.username + ".");
+        await loadUsers(false);
+    }
+
+    async function deleteUser(u) {
+        const yes = await ask("Delete " + u.username + "?",
+            "Server copies of their events will be removed. Devices keep local data. This cannot be undone.");
+        if (!yes) return;
+        const { ok, data } = await api("DELETE", "/v1/admin/users/" + encodeURIComponent(u.username));
+        if (!ok || data.err) {
+            flash("err", data.err || "Delete failed.");
+            return;
+        }
+        flash("ok", "Deleted " + u.username + ".");
+        await loadUsers(false);
+    }
+
+    document.getElementById("add-form").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        clearFlash();
+        const username = document.getElementById("new-username").value.trim();
+        const display = document.getElementById("new-display").value.trim();
+        const role = document.getElementById("new-role").value;
+        const enabled = document.getElementById("new-enabled").checked;
+        const body = { username, role, enabled };
+        if (display) body.display_name = display;
+        const { ok, data } = await api("POST", "/v1/admin/users", body);
+        if (!ok || data.err) {
+            flash("err", data.err || "Create failed.");
+            return;
+        }
+        document.getElementById("add-form").reset();
+        document.getElementById("new-enabled").checked = true;
+        showPassword(
+            "User created — " + data.username,
+            "Copy this temporary password now. It will not be shown again.",
+            data.temporary_password
+        );
+        await loadUsers(false);
+    });
+
+    document.getElementById("logout").addEventListener("click", async () => {
+        try { await api("POST", "/v1/auth/logout"); } catch (e) {}
+        clearSession();
+        location.replace("/login");
+    });
+
+    let t = null;
+    document.getElementById("q").addEventListener("input", () => {
+        clearTimeout(t);
+        t = setTimeout(() => loadUsers(false), 250);
+    });
+    document.getElementById("reload").addEventListener("click", () => loadUsers(false));
+    moreEl.addEventListener("click", () => loadUsers(true));
+
+    loadUsers(false).catch((e) => flash("err", e.message || "Failed to load users."));
+})();
+</script>
+{% endblock %}

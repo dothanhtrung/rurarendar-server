@@ -1,0 +1,50 @@
+[package]
+name = "rurarendar-server"
+version = "0.0.1"
+authors = ["Trung Do <dothanhtrung@pm.me>"]
+edition = "2024"
+
+[dependencies]
+web-misc = { version = "0.1", git = "https://gitlab.com/kimtinh/web-misc.git", branch = "master" }
+anyhow = { version = "1.0" }
+actix-web = { version = "4.16" }
+actix-files = "0.7"
+actix-multipart = { version = "0.8" }
+actix-cors = "0.7"
+actix-web-lab = "0.29"
+actix-web-httpauth = "0.8"
+clap = { version = "4.6", features = ["derive"] }
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros"] }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tera = "2.4"
+blake3 = "1.8"
+dotenvy = "0.15"
+infer = "0.22"
+parking_lot = "0.12"
+futures-util = "0.3"
+sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls-ring-webpki", "time", "migrate", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+ron = { version = "0.12" }
+argon2 = "0.6"
+rand = { version = "0.10" }
+base64 = "0.23"
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
+
+[build-dependencies]
+dotenvy = "0.15"
+
+[target.'cfg(all(target_os = "linux", not(target_arch = "aarch64")))'.dependencies]
+tikv-jemallocator = "0.7"
+
+[features]
+default = ["postgres"]
+postgres = ["web-misc/postgres", "sqlx/postgres"]
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
+[profile.release]
+strip = true
+lto = true

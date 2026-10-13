@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Initial Setup{% endblock %}
+{% block body %}
+<main class="grid min-h-screen place-items-center p-6">
+    <div class="w-full max-w-sm">
+        <h1 class="text-xl font-semibold">Create Administrator</h1>
+        {% if error %}
+        <p class="my-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">{{ error }}</p>
+        {% endif %}
+        <form action="/setup" method="post" class="mt-4 space-y-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div>
+                <label for="username" class="mb-1 block text-sm font-semibold">Username</label>
+                <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9._-]{3,32}"
+                       class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+            </div>
+            <div>
+                <label for="display-name" class="mb-1 block text-sm font-semibold">Display name</label>
+                <input id="display-name" name="display_name" autocomplete="name" maxlength="128"
+                       class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+            </div>
+            <div>
+                <label for="password" class="mb-1 block text-sm font-semibold">Login password</label>
+                <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"
+                       class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+            </div>
+            <div>
+                <label for="confirm-password" class="mb-1 block text-sm font-semibold">Confirm password</label>
+                <input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"
+                       class="w-full rounded-md border border-line bg-white px-2.5 py-2 text-ink focus:border-vermilion focus:outline-none focus:ring-2 focus:ring-vermilion/30">
+            </div>
+            <button type="submit" class="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-paper hover:bg-stone-800">Create administrator</button>
+        </form>
+        <p class="mt-4 text-xs text-muted">v{{ version }}</p>
+    </div>
+</main>
+{% endblock %}

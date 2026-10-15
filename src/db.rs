@@ -59,7 +59,6 @@ pub struct CryptoRow {
     pub verifier_nonce: Option<Vec<u8>>,
     pub verifier_ciphertext: Option<Vec<u8>>,
     pub rotation_status: String,
-    pub rotation_id: Option<i64>,
     pub from_key_revision: Option<i32>,
     pub to_key_revision: Option<i32>,
     pub pending_kdf_json: Option<Json<serde_json::Value>>,
@@ -554,7 +553,6 @@ pub async fn get_crypto(pool: &PgPool, user_id: i64) -> Result<Option<CryptoRow>
                   kdf_json as "kdf_json: Json<serde_json::Value>",
                   verifier_alg, verifier_nonce, verifier_ciphertext,
                   rotation_status,
-                  rotation_id,
                   from_key_revision, to_key_revision,
                   pending_kdf_json as "pending_kdf_json: Json<serde_json::Value>",
                   pending_verifier_alg, pending_verifier_nonce, pending_verifier_ciphertext,
@@ -601,10 +599,9 @@ pub async fn start_rotation(
     pending_nonce: &[u8],
     pending_ct: &[u8],
 ) -> Result<i64, sqlx::Error> {
-    sqlx::query_scalar!(
+    let updated = sqlx::query!(
         r#"UPDATE user_crypto SET
             rotation_status = 'in_progress',
-            rotation_id = nextval('user_crypto_rotation_id_seq'),
             from_key_revision = $2,
             to_key_revision = $3,
             pending_kdf_json = $4,
@@ -612,8 +609,7 @@ pub async fn start_rotation(
             pending_verifier_nonce = $6,
             pending_verifier_ciphertext = $7,
             rotation_started_at = now()
-         WHERE user_id = $1
-         RETURNING rotation_id as "rotation_id!: i64""#,
+         WHERE user_id = $1"#,
         user_id,
         from_rev,
         to_rev,
@@ -622,8 +618,12 @@ pub async fn start_rotation(
         pending_nonce,
         pending_ct
     )
-    .fetch_one(pool)
-    .await
+    .execute(pool)
+    .await?;
+    if updated.rows_affected() == 0 {
+        return Err(sqlx::Error::RowNotFound);
+    }
+    Ok(i64::from(to_rev))
 }
 
 pub async fn complete_rotation(pool: &PgPool, user_id: i64) -> Result<(), sqlx::Error> {
@@ -635,7 +635,6 @@ pub async fn complete_rotation(pool: &PgPool, user_id: i64) -> Result<(), sqlx::
             verifier_nonce = pending_verifier_nonce,
             verifier_ciphertext = pending_verifier_ciphertext,
             rotation_status = 'idle',
-            rotation_id = NULL,
             from_key_revision = NULL,
             to_key_revision = NULL,
             pending_kdf_json = NULL,

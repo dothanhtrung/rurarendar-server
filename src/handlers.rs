@@ -703,7 +703,7 @@ async fn rotation_start(db: web::Data<DBPool>, auth: AuthUser, body: web::Json<S
     }
     if c.rotation_status == "in_progress" {
         return json_ok(json!({
-            "rotation_id": c.rotation_id,
+            "rotation_id": c.to_key_revision,
             "status": "in_progress",
             "from_key_revision": c.from_key_revision,
             "to_key_revision": c.to_key_revision,
@@ -763,7 +763,7 @@ async fn rotation_get(db: web::Data<DBPool>, auth: AuthUser) -> HttpResponse {
             .await
             .unwrap_or(0);
             json_ok(json!({
-                "rotation_id": c.rotation_id,
+                "rotation_id": c.to_key_revision,
                 "status": "in_progress",
                 "from_key_revision": c.from_key_revision,
                 "to_key_revision": c.to_key_revision,

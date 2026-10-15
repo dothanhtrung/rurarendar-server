@@ -15,9 +15,6 @@ create table if not exists users
         primary key
 );
 
-alter table users
-    owner to dev;
-
 create table if not exists tokens
 (
     username     text                                   not null,
@@ -36,9 +33,6 @@ create table if not exists tokens
         primary key
 );
 
-alter table tokens
-    owner to dev;
-
 create index if not exists tokens_hash_live_idx
     on tokens (token_hash)
     where (revoked_at IS NULL);
@@ -51,9 +45,6 @@ create table if not exists user_seq
         references users
             on delete cascade
 );
-
-alter table user_seq
-    owner to dev;
 
 create table if not exists user_items
 (
@@ -77,9 +68,6 @@ create table if not exists user_items
     primary key (user_id, item_id)
 );
 
-alter table user_items
-    owner to dev;
-
 create table if not exists user_crypto
 (
     current_key_revision        integer default 0            not null,
@@ -100,12 +88,8 @@ create table if not exists user_crypto
     user_id                     bigint                       not null
         primary key
         references users
-            on delete cascade,
-    rotation_id                 bigint  default nextval('user_crypto_rotation_id_seq'::regclass)
+            on delete cascade
 );
-
-alter table user_crypto
-    owner to dev;
 
 create table if not exists admin_audit
 (
@@ -117,9 +101,6 @@ create table if not exists admin_audit
     request_id      text,
     created_at      timestamp with time zone default now() not null
 );
-
-alter table admin_audit
-    owner to dev;
 
 create table if not exists app_tokens
 (
@@ -137,9 +118,6 @@ create table if not exists app_tokens
         primary key
 );
 
-alter table app_tokens
-    owner to dev;
-
 create table if not exists server_setup
 (
     id        boolean default true not null
@@ -149,7 +127,6 @@ create table if not exists server_setup
     completed boolean              not null
 );
 
-alter table server_setup
-    owner to dev;
-
-
+insert into server_setup (id, completed)
+values (true, false)
+on conflict (id) do nothing;
